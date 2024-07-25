@@ -34,6 +34,10 @@ import {
   User as UserType,
   Unsubscribe,
   AuthProvider,
+  signInWithRedirect,
+  getAuth,
+  getRedirectResult,
+  UserCredential,
 } from "firebase/auth";
 import { Auth, getAuthenticatedUser, isAuthenticated } from "../firebase";
 import { dispatch as dispatchSignUpEvent } from "../observables/google-sign-up-event";
@@ -229,9 +233,17 @@ async function readyFunction(
   authInitialisedAndConnected: boolean,
   user: UserType | null
 ): Promise<void> {
+  console.log("###", user);
   const search = window.location.search;
   const hash = window.location.hash;
   console.debug(`account controller ready`);
+
+  //check for redirect
+
+  await getRedirectResult(getAuth()).then((result) => {
+    console.log("#### redirect ", result);
+  });
+
   if (authInitialisedAndConnected) {
     console.debug(`auth state changed, user ${user ? true : false}`);
     console.debug(user);
@@ -334,7 +346,10 @@ async function signIn(): Promise<void> {
     });
 }
 
-async function signInWithProvider(provider: AuthProvider): Promise<void> {
+async function signInWithProvider(
+  provider: AuthProvider,
+  usePopup = false
+): Promise<void> {
   if (Auth === undefined) {
     Notifications.add("Authentication uninitialized", -1, {
       duration: 3,
@@ -348,6 +363,8 @@ async function signInWithProvider(provider: AuthProvider): Promise<void> {
     return;
   }
 
+  // @ts-expect-error
+  provider.addScope("https://www.googleapis.com/auth/plus.login");
   LoginPage.showPreloader();
   LoginPage.disableInputs();
   LoginPage.disableSignUpButton();
@@ -359,12 +376,18 @@ async function signInWithProvider(provider: AuthProvider): Promise<void> {
     : browserSessionPersistence;
 
   await setPersistence(Auth, persistence);
+
+  if (!usePopup) {
+    await signInWithRedirect(Auth, provider);
+    return;
+  }
+
   signInWithPopup(Auth, provider)
-    .then(async (signedInUser) => {
-      if (getAdditionalUserInfo(signedInUser)?.isNewUser) {
-        dispatchSignUpEvent(signedInUser, true);
+    .then(async (credentials: UserCredential) => {
+      if (getAdditionalUserInfo(credentials)?.isNewUser) {
+        dispatchSignUpEvent(credentials, true);
       } else {
-        await loadUser(signedInUser.user);
+        await loadUser(credentials.user);
       }
     })
     .catch((error) => {

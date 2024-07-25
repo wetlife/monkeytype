@@ -1,12 +1,9 @@
 // Import the functions you need from the SDKs you need
 import { FirebaseApp, initializeApp } from "firebase/app";
-import { getAuth, Auth as AuthType, User } from "firebase/auth";
-// eslint-disable-next-line @typescript-eslint/prefer-ts-expect-error
-//@ts-ignore
-// eslint-disable-next-line import/no-unresolved
 import { firebaseConfig } from "./constants/firebase-config";
 import * as Notifications from "./elements/notifications";
 import { createErrorMessage, isDevEnvironment } from "./utils/misc";
+import { getAuth, User, Auth as AuthType } from "firebase/auth";
 
 // Initialize Firebase
 export let app: FirebaseApp | undefined;
@@ -28,6 +25,7 @@ export function getAuthenticatedUser(): User {
 try {
   app = initializeApp(firebaseConfig);
   Auth = getAuth(app);
+  console.log("### init ", Auth.currentUser);
 } catch (e) {
   app = undefined;
   Auth = undefined;
